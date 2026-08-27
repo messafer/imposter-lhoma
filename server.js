@@ -173,9 +173,22 @@ socket.on('create_room', ({ playerName, avatar }, callback) => {
     if (room.players.length < 3) return;
 
     // Pick Impostors
-    const shuffled = [...room.players].sort(() => Math.random() - 0.5);
-    const impostorCount = Math.min(room.settings.impostorCount || 1, Math.floor(room.players.length / 2) || 1);
-    const chosenImpostorIds = shuffled.slice(0, impostorCount).map(p => p.id);
+    const players = [...room.players];
+
+// Fisher-Yates shuffle
+for (let i = players.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [players[i], players[j]] = [players[j], players[i]];
+}
+
+const impostorCount = Math.min(
+  room.settings.impostorCount || 1,
+  Math.floor(players.length / 2)
+);
+
+const chosenImpostorIds = players
+  .slice(0, impostorCount)
+  .map(player => player.id);
     const startingPlayerIndex = Math.floor(Math.random() * room.players.length);
 
     room.gameState = {
@@ -351,6 +364,7 @@ socket.on('create_room', ({ playerName, avatar }, callback) => {
       io.to(currentRoom).emit('room_updated', room);
     }
   });
+  const socket = io('https://imposter-lhoma.onrender.com');
 });
 app.get('/', (req, res) => {
   res.json({
