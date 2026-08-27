@@ -4,7 +4,7 @@ let socket = null;
 
 export function getSocket() {
   if (!socket) {
-    const serverUrl = 'http://192.168.100.101:3001';
+    const serverUrl = 'https://imposter-lhoma.onrender.com';
 
     socket = io(serverUrl, {
       transports: ['websocket', 'polling'],

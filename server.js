@@ -3,7 +3,10 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import os from 'os';
-
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const app = express();
 app.use(cors());
 
@@ -335,6 +338,11 @@ io.on('connection', (socket) => {
       io.to(currentRoom).emit('room_updated', room);
     }
   });
+});
+app.use(express.static(path.join(__dirname, 'dist')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3001;
