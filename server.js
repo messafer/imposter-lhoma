@@ -352,10 +352,12 @@ socket.on('create_room', ({ playerName, avatar }, callback) => {
     }
   });
 });
-app.use(express.static(path.join(__dirname, 'dist')));
-
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.json({
+    status: 'online',
+    message: 'LHOMA Room Server is running',
+    activeRooms: Object.keys(rooms).length
+  });
 });
 
 const PORT = process.env.PORT || 3001;
