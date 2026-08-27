@@ -21,13 +21,17 @@ const io = new Server(server, {
 // Helper to get local network IP for phones
 function getLocalIP() {
   const interfaces = os.networkInterfaces();
+
   for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
+    if (name.toLowerCase().includes('wi-fi') || name.toLowerCase().includes('wifi')) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          return iface.address;
+        }
       }
     }
   }
+
   return 'localhost';
 }
 
@@ -47,21 +51,30 @@ function generateRoomCode() {
 
 app.get('/api/info', (req, res) => {
   res.json({
-    localIP,
+    server: 'online',
     port: PORT,
     activeRooms: Object.keys(rooms).length
   });
 });
 
 io.on('connection', (socket) => {
+  console.log('CONNECTED:', socket.id);
+
   let currentRoom = null;
 
   // 1. Host creates room
-  socket.on('create_room', ({ playerName, avatar }, callback) => {
-    let roomCode = generateRoomCode();
-    while (rooms[roomCode]) {
-      roomCode = generateRoomCode();
-    }
+socket.on('create_room', ({ playerName, avatar }, callback) => {
+  console.log('CREATE ROOM:', playerName);
+
+  // Generate a unique room code
+  let roomCode = generateRoomCode();
+
+  while (rooms[roomCode]) {
+    roomCode = generateRoomCode();
+  }
+
+  console.log('ROOM CODE:', roomCode);
+
 
     const hostPlayer = {
       id: socket.id,
