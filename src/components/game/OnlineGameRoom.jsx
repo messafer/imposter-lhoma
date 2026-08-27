@@ -1,20 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+
 import { 
   Lock, 
-  Eye, 
-  EyeOff, 
-  ShieldAlert, 
-  Users, 
-  Clock, 
   Check, 
-  ArrowRight, 
-  Sparkles, 
-  RotateCcw, 
-  Trophy, 
-  Play, 
-  Pause,
-  AlertCircle
-} from 'lucide-react';
+  ArrowRight} from 'lucide-react';
 import { sounds } from '../../utils/audio';
 import { CATEGORIES } from '../../data/words';
 

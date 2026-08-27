@@ -29,7 +29,6 @@ function getLocalIP() {
 }
 
 const localIP = getLocalIP();
-const PORT = 3001;
 
 // In-memory rooms
 const rooms = {};
@@ -338,6 +337,8 @@ io.on('connection', (socket) => {
   });
 });
 
+const PORT = process.env.PORT || 3001;
+
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`LHOMA Room Server running on http://${localIP}:${PORT} (and http://localhost:${PORT})`);
+  console.log(`LHOMA Room Server running on port ${PORT}`);
 });

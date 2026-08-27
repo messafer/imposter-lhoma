@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+
 import { 
   Users, 
   Smartphone, 
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 import { CATEGORIES, AVATARS } from '../../data/words';
 import { sounds } from '../../utils/audio';
+import supabase from '../../lib/supabase';
 
 export default function MultiplayerLobby({
   socket,
@@ -53,89 +55,283 @@ export default function MultiplayerLobby({
   }, []);
 
   // Listen to room updates
-  useEffect(() => {
-    if (!socket) return;
+useEffect(() => {
+  if (!room?.id) return;
 
-    socket.on('room_updated', (updatedRoom) => {
-      setRoom(updatedRoom);
+  const loadRoom = async () => {
+    const { data: roomData, error: roomError } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('id', room.id)
+      .single();
+
+    if (roomError) {
+      console.error(roomError);
+      return;
+    }
+
+    const { data: playersData, error: playersError } = await supabase
+      .from('players')
+      .select('*')
+      .eq('room_id', room.id)
+      .order('created_at', { ascending: true });
+
+    if (playersError) {
+      console.error(playersError);
+      return;
+    }
+
+    setRoom({
+      id: roomData.id,
+      code: roomData.room_code,
+      settings: roomData.settings,
+      players: playersData.map((p) => ({
+        id: p.id,
+        name: p.name,
+        avatar: p.avatar || AVATARS[0],
+        isHost: p.is_host
+      }))
     });
+  };
 
-    return () => {
-      socket.off('room_updated');
-    };
-  }, [socket]);
+  loadRoom();
+
+  const channel = supabase
+    .channel(`room-${room.id}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'players',
+        filter: `room_id=eq.${room.id}`
+      },
+      () => {
+        loadRoom();
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'rooms',
+        filter: `id=eq.${room.id}`
+      },
+      () => {
+        loadRoom();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [room?.id]);
 
   // Host creates room
-  const handleCreateRoom = (e) => {
-    e?.preventDefault();
-    if (!playerName.trim()) {
-      setErrorMsg('Please enter your name!');
+const generateRoomCode = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+
+  for (let i = 0; i < 4; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+
+  return code;
+};
+const handleCreateRoom = async (e) => {
+  e?.preventDefault();
+
+  if (!playerName.trim()) {
+    setErrorMsg('Please enter your name!');
+    return;
+  }
+
+  setErrorMsg('');
+  sounds.playClick();
+
+  try {
+    const roomCode = generateRoomCode();
+
+    const { data: newRoom, error: roomError } = await supabase
+      .from('rooms')
+      .insert({
+        room_code: roomCode,
+        settings: {
+          selectedCategories: CATEGORIES.map((cat) => cat.id)
+        }
+      })
+      .select()
+      .single();
+
+    if (roomError) {
+      console.error('Room error:', roomError);
+      setErrorMsg(roomError.message);
       return;
     }
-    setErrorMsg('');
-    sounds.playClick();
 
-    socket.emit('create_room', {
-      playerName: playerName.trim(),
-      avatar: selectedAvatar
-    }, (res) => {
-      if (res.success) {
-        setRoom(res.room);
-        setMyPlayer(res.player);
-        setIsHost(true);
-        sounds.playWin();
-      } else {
-        setErrorMsg(res.message || 'Failed to create room');
+    const { data: newPlayer, error: playerError } = await supabase
+      .from('players')
+      .insert({
+        room_id: newRoom.id,
+        name: playerName.trim(),
+        is_host: true
+      })
+      .select()
+      .single();
+
+    if (playerError) {
+      console.error('Player error:', playerError);
+      setErrorMsg(playerError.message);
+      return;
+    }
+
+    setRoom({
+      id: newRoom.id,
+      code: newRoom.room_code,
+      settings: newRoom.settings,
+      players: [
+        {
+          id: newPlayer.id,
+          name: newPlayer.name,
+          avatar: selectedAvatar,
+          isHost: true
+        }
+      ]
+    });
+
+    setMyPlayer(newPlayer);
+    setIsHost(true);
+
+    sounds.playWin();
+  } catch (error) {
+    console.error('Create room error:', error);
+    setErrorMsg('Failed to create room');
+  }
+};
+const handleJoinRoom = async (e) => {
+  e?.preventDefault();
+
+  if (!playerName.trim()) {
+    setErrorMsg('Please enter your name!');
+    return;
+  }
+
+  const code = joinCode.trim().toUpperCase();
+
+  if (code.length !== 4) {
+    setErrorMsg('Please enter a valid 4-letter Room Code!');
+    return;
+  }
+
+  setErrorMsg('');
+  sounds.playClick();
+
+  try {
+    const { data: foundRoom, error: roomError } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('room_code', code)
+      .maybeSingle();
+
+    if (roomError) {
+      console.error(roomError);
+      setErrorMsg(roomError.message);
+      return;
+    }
+
+    if (!foundRoom) {
+      setErrorMsg('Room not found!');
+      return;
+    }
+
+    const { count, error: countError } = await supabase
+      .from('players')
+      .select('*', { count: 'exact', head: true })
+      .eq('room_id', foundRoom.id);
+
+    if (countError) {
+      console.error(countError);
+      setErrorMsg(countError.message);
+      return;
+    }
+
+    if ((count || 0) >= 20) {
+      setErrorMsg('Room is full!');
+      return;
+    }
+
+    const { data: newPlayer, error: playerError } = await supabase
+      .from('players')
+      .insert({
+          room_id: foundRoom.id,
+          name: playerName.trim(),
+          is_host: false,
+          avatar: selectedAvatar
+      })
+      .select()
+      .single();
+
+    if (playerError) {
+      console.error(playerError);
+      setErrorMsg(playerError.message);
+      return;
+    }
+
+    setMyPlayer(newPlayer);
+    setIsHost(false);
+
+    setRoom({
+      id: foundRoom.id,
+      code: foundRoom.room_code,
+      settings: foundRoom.settings,
+      players: [
+        {
+          id: newPlayer.id,
+          name: newPlayer.name,
+          avatar: selectedAvatar,
+          isHost: false
+        }
+      ]
+    });
+
+    sounds.playWin();
+  } catch (error) {
+    console.error(error);
+    setErrorMsg('Failed to join room');
+  }
+};
+
+const toggleCategory = async (catId) => {
+  if (!isHost || !room) return;
+
+  sounds.playClick();
+
+  let updated = [...room.settings.selectedCategories];
+
+  if (updated.includes(catId)) {
+    if (updated.length === 1) return;
+    updated = updated.filter((id) => id !== catId);
+  } else {
+    updated.push(catId);
+  }
+
+  const { error } = await supabase
+    .from('rooms')
+    .update({
+      settings: {
+        ...room.settings,
+        selectedCategories: updated
       }
-    });
-  };
+    })
+    .eq('id', room.id);
 
-  // Player joins room
-  const handleJoinRoom = (e) => {
-    e?.preventDefault();
-    if (!playerName.trim()) {
-      setErrorMsg('Please enter your name!');
-      return;
-    }
-    if (!joinCode.trim() || joinCode.trim().length !== 4) {
-      setErrorMsg('Please enter a valid 4-letter Room Code!');
-      return;
-    }
-    setErrorMsg('');
-    sounds.playClick();
-
-    socket.emit('join_room', {
-      roomCode: joinCode.trim(),
-      playerName: playerName.trim(),
-      avatar: selectedAvatar
-    }, (res) => {
-      if (res.success) {
-        setRoom(res.room);
-        setMyPlayer(res.player);
-        setIsHost(res.player.isHost);
-        sounds.playWin();
-      } else {
-        setErrorMsg(res.message || 'Failed to join room');
-      }
-    });
-  };
-
-  // Host updates category settings
-  const toggleCategory = (catId) => {
-    if (!isHost || !room) return;
-    sounds.playClick();
-    let updated = [...room.settings.selectedCategories];
-    if (updated.includes(catId)) {
-      if (updated.length === 1) return;
-      updated = updated.filter(id => id !== catId);
-    } else {
-      updated.push(catId);
-    }
-    socket.emit('update_settings', {
-      roomCode: room.code,
-      settings: { selectedCategories: updated }
-    });
-  };
+  if (error) {
+    console.error(error);
+    setErrorMsg(error.message);
+  }
+};
 
   // Host starts the game
   const handleHostStartGame = () => {
@@ -164,7 +360,7 @@ export default function MultiplayerLobby({
     });
   };
 
-  const currentHostUrl = `${window.location.protocol}//${window.location.hostname}:3000/?room=${room?.code || ''}`;
+const currentHostUrl = `${window.location.origin}${window.location.pathname}?room=${room?.code || ''}`;
 
   const copyRoomLink = () => {
     navigator.clipboard.writeText(currentHostUrl);
@@ -419,7 +615,7 @@ export default function MultiplayerLobby({
                     </span>
                     <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
                       {p.isHost && <Crown className="w-3 h-3 text-amber-400" />}
-                      {p.id === socket.id ? '(You)' : p.isHost ? 'Host' : 'Player'}
+                      {p.id === myPlayer?.id ? '(You)' : p.isHost ? 'Host' : 'Player'}
                     </span>
                   </div>
                 </div>

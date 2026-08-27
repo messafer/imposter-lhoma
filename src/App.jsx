@@ -20,10 +20,10 @@ export default function App() {
   // Pass-and-Play state
   const [phase, setPhase] = useState('setup');
   const [players, setPlayers] = useState([
-    { id: 1, name: 'أمين', avatar: '🦊', score: 0 },
-    { id: 2, name: 'سارة', avatar: '🐱', score: 0 },
-    { id: 3, name: 'كريم', avatar: '🚀', score: 0 },
-    { id: 4, name: 'إيمان', avatar: '🦁', score: 0 },
+    { id: 1, name: 'ayoub', avatar: '🦊', score: 0 },
+    { id: 2, name: 'islem', avatar: '🐱', score: 0 },
+    { id: 3, name: 'asma', avatar: '🚀', score: 0 },
+    { id: 4, name: 'lina', avatar: '🦁', score: 0 },
   ]);
   const [impostorCount, setImpostorCount] = useState(1);
   const [undercoverMode, setUndercoverMode] = useState(false);
@@ -114,7 +114,7 @@ export default function App() {
   const handleStartVoting = () => {
     setPhase('voting');
   };
-
+  
   const handleConfirmVotes = (castVotes) => {
     setVotes(castVotes);
 
