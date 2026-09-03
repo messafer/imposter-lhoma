@@ -11,7 +11,6 @@ import ModeSelectionScreen from './components/game/ModeSelectionScreen';
 import { CATEGORIES } from './data/words';
 import { getSocket } from './services/socket';
 import { ArrowLeft } from 'lucide-react';
-
 export default function App() {
   const [playMode, setPlayMode] = useState('select'); // 'select' | 'multiplayer' | 'pass_and_play'
   const [isOnlineGameActive, setIsOnlineGameActive] = useState(false);

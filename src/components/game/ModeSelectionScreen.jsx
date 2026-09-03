@@ -22,14 +22,10 @@ export default function ModeSelectionScreen({
             <span>Algerian Edition • 3-20 Players</span>
           </div>
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white">
-            IMPOSTER TA3 LHOMA
+            IMPOSTER
           </h1>
-          <span className="text-base sm:text-xl font-extrabold text-purple-400 block mt-1">
-            إمبوستر تاع الحومة 🇩🇿
-          </span>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto mt-2">
-            لعبة إمبوستر تاع الحومة والخداع والكلمة السرية بالدارجة الجزائرية! اختر كيف تريدون اللعب:
-          </p>
+          
+        
         </div>
       </div>
 
@@ -55,7 +51,7 @@ export default function ModeSelectionScreen({
             </div>
 
             <h2 className="text-2xl sm:text-3xl font-black text-white group-hover:text-purple-300 transition-colors">
-              كل واحد بهاتفو
+              everyone uses their phone
             </h2>
             <span className="text-xs font-bold text-purple-400 block mt-1">
               Multi-Phone Room (3 - 20 Players)
@@ -90,12 +86,12 @@ export default function ModeSelectionScreen({
                 🔄
               </div>
               <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                هاتف واحد 📱
+                telephone wa7d📱
               </span>
             </div>
 
             <h2 className="text-2xl sm:text-3xl font-black text-white group-hover:text-indigo-300 transition-colors">
-              في هاتف واحد
+              use only one phone
             </h2>
             <span className="text-xs font-bold text-indigo-400 block mt-1">
               Pass & Play (3 - 20 Players)

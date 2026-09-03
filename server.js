@@ -206,18 +206,32 @@ const chosenImpostorIds = players
 
     // Send private secret role to each player's phone
     room.players.forEach(p => {
-      const isImpostor = chosenImpostorIds.includes(p.id);
-      io.to(p.id).emit('your_secret_role', {
-        isImpostor,
-        undercoverMode: room.settings.undercoverMode,
-        categoryName: wordItem.categoryName,
-        secretWord: isImpostor ? (room.settings.undercoverMode ? wordItem.undercover : null) : wordItem.word,
-        hint: wordItem.hint || null,
-        tip: isImpostor 
-          ? (room.settings.undercoverMode ? 'You are Undercover! Your word is slightly different.' : 'You are the Impostor! Blend in and guess the word!') 
-          : 'You are a Civilian! Protect the secret word.'
-      });
-    });
+  const isImpostor = chosenImpostorIds.includes(p.id);
+
+  const roleData = {
+    isImpostor,
+    undercoverMode: room.settings.undercoverMode,
+    categoryName: wordItem.categoryName || 'General',
+
+    secretWord: isImpostor
+      ? (room.settings.undercoverMode ? wordItem.undercover : null)
+      : wordItem.word,
+
+    hint: wordItem.hint || null,
+
+    tip: isImpostor
+      ? (
+          room.settings.undercoverMode
+            ? 'You are Undercover! Your word is slightly different.'
+            : 'You are the Impostor! Blend in and guess the word!'
+        )
+      : 'You are a Civilian! Protect the secret word.'
+  };
+
+  console.log('ROLE SENT:', p.name, roleData);
+
+  io.to(p.id).emit('your_secret_role', roleData);
+});
 
     io.to(roomCode).emit('game_started', {
       phase: 'role_reveal',

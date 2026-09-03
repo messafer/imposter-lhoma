@@ -29,6 +29,8 @@ export default function OnlineGameRoom({
     if (!socket) return;
 
     socket.on('your_secret_role', (roleData) => {
+        console.log('ROLE RECEIVED:', roleData);
+  console.log('HINT RECEIVED:', roleData.hint);
       setMyRole(roleData);
       setRevealed(false);
       setMyVote(null);
@@ -160,7 +162,7 @@ export default function OnlineGameRoom({
       candidatePool = CATEGORIES[0].words.map(w => ({ ...w, categoryName: CATEGORIES[0].name }));
     }
     const selectedWordItem = candidatePool[Math.floor(Math.random() * candidatePool.length)];
-
+    console.log('WORD SENT TO SERVER:', selectedWordItem);
     socket.emit('start_game', {
       roomCode: room.code,
       wordItem: selectedWordItem
@@ -227,6 +229,16 @@ export default function OnlineGameRoom({
                     <h3 className="text-2xl sm:text-3xl font-black text-rose-400">
                       YOU ARE THE IMPOSTOR!
                     </h3>
+                    {myRole.hint && (
+  <div className="mt-4 p-4 rounded-2xl bg-black/30 border border-yellow-500/30 text-center">
+    <p className="text-sm font-bold text-yellow-300">
+      💡 HINT
+    </p>
+    <p className="mt-1 text-base text-white">
+      {myRole.hint}
+    </p>
+  </div>
+)}
                     <p className="text-xs text-rose-200/90 pt-2 border-t border-rose-500/30">
                       You don't know the exact word! Listen to other players' clues and pretend you know it.
                     </p>
@@ -273,7 +285,6 @@ export default function OnlineGameRoom({
               </div>
             )}
           </div>
-
           {/* If Host: Start discussion button */}
           {isHost ? (
             <div className="pt-4">

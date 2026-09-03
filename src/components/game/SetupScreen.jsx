@@ -119,11 +119,8 @@ export default function SetupScreen({
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-rose-500 via-purple-500 to-indigo-400 bg-clip-text text-transparent">
-              IMPOSTER TA3 LHOMA
+              IMPOSTER
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              إمبوستر تاع الحومة • لعبة الكلمة السرية والشك بالدارجة الجزائرية 🇩🇿
-            </p>
           </div>
         </div>
 

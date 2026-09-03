@@ -93,12 +93,24 @@ export default function RevealScreen({
                     <h3 className="text-2xl sm:text-3xl font-black text-rose-400 mt-1">
                       YOU ARE THE IMPOSTOR!
                     </h3>
+                    {gameState.hint && (
+  <div className="mt-4 p-4 rounded-2xl bg-black/30 border border-yellow-500/30 text-center">
+    <p className="text-sm font-bold text-yellow-300">
+      💡 HINT
+    </p>
+    <p className="mt-1 text-base text-white">
+      {gameState.hint}
+    </p>
+  </div>
+)}
+                    
                   </div>
                   <div className="p-4 rounded-2xl bg-black/40 border border-rose-500/30 text-xs text-rose-200/90 leading-relaxed">
                     <p className="font-bold mb-1">Category: {gameState.categoryName}</p>
                     <p>You don't know the exact secret word! Listen carefully to other players' clues and pretend you know it.</p>
                   </div>
                 </div>
+                
               ) : isUndercover ? (
                 /* Undercover Mode */
                 <div className="space-y-4">

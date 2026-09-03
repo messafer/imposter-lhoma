@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { io } from 'socket.io-client';
+
+const socket = io('https://imposter-lhoma.onrender.com');
 
 import { 
   Users, 
@@ -151,64 +154,42 @@ const handleCreateRoom = async (e) => {
   setErrorMsg('');
   sounds.playClick();
 
-  try {
-    const roomCode = generateRoomCode();
+  socket.emit(
+    'create_room',
+    {
+      playerName: playerName.trim(),
+      avatar: selectedAvatar
+    },
+    (response) => {
+      if (!response || !response.success) {
+        console.error('Room error:', response?.message);
+        setErrorMsg(response?.message || 'Failed to create room');
+        return;
+      }
 
-    const { data: newRoom, error: roomError } = await supabase
-      .from('rooms')
-      .insert({
-        room_code: roomCode,
-        settings: {
-          selectedCategories: CATEGORIES.map((cat) => cat.id)
-        }
-      })
-      .select()
-      .single();
+      console.log('✅ Room created:', response.roomCode);
 
-    if (roomError) {
-      console.error('Room error:', roomError);
-      setErrorMsg(roomError.message);
-      return;
+      const newPlayer = response.player;
+      const roomData = response.room;
+
+      setMyPlayer(newPlayer);
+      setIsHost(true);
+
+      setRoom({
+        id: response.roomCode,
+        code: response.roomCode,
+        settings: roomData.settings,
+        players: roomData.players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          avatar: p.avatar,
+          isHost: p.isHost
+        }))
+      });
+
+      sounds.playWin();
     }
-
-    const { data: newPlayer, error: playerError } = await supabase
-      .from('players')
-      .insert({
-        room_id: newRoom.id,
-        name: playerName.trim(),
-        is_host: true
-      })
-      .select()
-      .single();
-
-    if (playerError) {
-      console.error('Player error:', playerError);
-      setErrorMsg(playerError.message);
-      return;
-    }
-
-    setRoom({
-      id: newRoom.id,
-      code: newRoom.room_code,
-      settings: newRoom.settings,
-      players: [
-        {
-          id: newPlayer.id,
-          name: newPlayer.name,
-          avatar: selectedAvatar,
-          isHost: true
-        }
-      ]
-    });
-
-    setMyPlayer(newPlayer);
-    setIsHost(true);
-
-    sounds.playWin();
-  } catch (error) {
-    console.error('Create room error:', error);
-    setErrorMsg('Failed to create room');
-  }
+  );
 };
 const handleJoinRoom = async (e) => {
   e?.preventDefault();
@@ -228,81 +209,67 @@ const handleJoinRoom = async (e) => {
   setErrorMsg('');
   sounds.playClick();
 
-  try {
-    const { data: foundRoom, error: roomError } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('room_code', code)
-      .maybeSingle();
+  socket.emit(
+    'join_room',
+    {
+      roomCode: code,
+      playerName: playerName.trim(),
+      avatar: selectedAvatar
+    },
+    (response) => {
+      if (!response || !response.success) {
+        console.error('Join room error:', response?.message);
+        setErrorMsg(response?.message || 'Failed to join room');
+        return;
+      }
 
-    if (roomError) {
-      console.error(roomError);
-      setErrorMsg(roomError.message);
-      return;
+      console.log('✅ Joined room:', response.roomCode);
+
+      const newPlayer = response.player;
+      const roomData = response.room;
+
+      setMyPlayer(newPlayer);
+      setIsHost(false);
+
+      setRoom({
+        id: response.roomCode,
+        code: response.roomCode,
+        settings: roomData.settings,
+        players: roomData.players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          avatar: p.avatar,
+          isHost: p.isHost
+        }))
+      });
+
+      sounds.playWin();
     }
-
-    if (!foundRoom) {
-      setErrorMsg('Room not found!');
-      return;
-    }
-
-    const { count, error: countError } = await supabase
-      .from('players')
-      .select('*', { count: 'exact', head: true })
-      .eq('room_id', foundRoom.id);
-
-    if (countError) {
-      console.error(countError);
-      setErrorMsg(countError.message);
-      return;
-    }
-
-    if ((count || 0) >= 20) {
-      setErrorMsg('Room is full!');
-      return;
-    }
-
-    const { data: newPlayer, error: playerError } = await supabase
-      .from('players')
-      .insert({
-          room_id: foundRoom.id,
-          name: playerName.trim(),
-          is_host: false,
-          avatar: selectedAvatar
-      })
-      .select()
-      .single();
-
-    if (playerError) {
-      console.error(playerError);
-      setErrorMsg(playerError.message);
-      return;
-    }
-
-    setMyPlayer(newPlayer);
-    setIsHost(false);
+  );
+};
+useEffect(() => {
+  const handleRoomUpdate = (roomData) => {
+    console.log('🔄 Room updated:', roomData);
 
     setRoom({
-      id: foundRoom.id,
-      code: foundRoom.room_code,
-      settings: foundRoom.settings,
-      players: [
-        {
-          id: newPlayer.id,
-          name: newPlayer.name,
-          avatar: selectedAvatar,
-          isHost: false
-        }
-      ]
+      id: roomData.code,
+      code: roomData.code,
+      settings: roomData.settings,
+      players: roomData.players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        avatar: p.avatar,
+        isHost: p.isHost
+      }))
     });
+  };
 
-    sounds.playWin();
-  } catch (error) {
-    console.error(error);
-    setErrorMsg('Failed to join room');
-  }
-};
+  socket.on('room_updated', handleRoomUpdate);
 
+  return () => {
+    socket.off('room_updated', handleRoomUpdate);
+  };
+}, []);
 const toggleCategory = async (catId) => {
   if (!isHost || !room) return;
 
@@ -379,10 +346,10 @@ const currentHostUrl = `${window.location.origin}${window.location.pathname}?roo
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-purple-400 via-rose-400 to-indigo-400 bg-clip-text text-transparent">
-              IMPOSTER TA3 LHOMA
+              IMPOSTER
             </h1>
             <p className="text-xs text-slate-400 font-medium">
-              غرفة اللعب الجماعي • كل واحد بهاتفو (3 - 20 لاعب) 🇩🇿
+            kol wa7d btelephone ta3o 
             </p>
           </div>
         </div>
@@ -464,7 +431,7 @@ const currentHostUrl = `${window.location.origin}${window.location.pathname}?roo
               <input
                 type="text"
                 maxLength={18}
-                placeholder="e.g. أمين, سارة, كريم..."
+                placeholder="ayoub,islem,asma,lina..."
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 className="w-full px-4 py-3.5 rounded-2xl bg-slate-800 border border-slate-700 text-white text-base focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-slate-500"
