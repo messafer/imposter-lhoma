@@ -198,6 +198,7 @@ const chosenImpostorIds = players
       impostorIds: chosenImpostorIds,
       startingPlayerIndex,
       undercoverMode: room.settings.undercoverMode
+      
     };
 
     room.phase = 'role_reveal';
@@ -211,6 +212,7 @@ const chosenImpostorIds = players
         undercoverMode: room.settings.undercoverMode,
         categoryName: wordItem.categoryName,
         secretWord: isImpostor ? (room.settings.undercoverMode ? wordItem.undercover : null) : wordItem.word,
+        hint: wordItem.hint || null,
         tip: isImpostor 
           ? (room.settings.undercoverMode ? 'You are Undercover! Your word is slightly different.' : 'You are the Impostor! Blend in and guess the word!') 
           : 'You are a Civilian! Protect the secret word.'
@@ -364,7 +366,7 @@ const chosenImpostorIds = players
       io.to(currentRoom).emit('room_updated', room);
     }
   });
-  const socket = io('https://imposter-lhoma.onrender.com');
+  
 });
 app.get('/', (req, res) => {
   res.json({
